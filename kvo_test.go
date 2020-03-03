@@ -1,29 +1,3 @@
-# kvo
-kvo
-
-
-``` 
-	sub1, err := Kvo.Subscription("aa")
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	go func() {
-		data := <-sub1.Channel
-		log.Println(data)
-		sub1.Unsubscribe()
-	}()
-
-	Kvo.Publish("aa","this is aa")
-
-	Kvo.Unsubscribe("aa")
-
-	time.Sleep(time.Second)
-```
-
-
-
-``` 
 package kvo
 
 import (
@@ -78,4 +52,22 @@ func test2(kvo *KvoChannel) {
 		}
 	}
 }
-```
+
+func TestKvo2(t *testing.T) {
+	sub1, err := Kvo.Subscription("aa")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	go func() {
+		data := <-sub1.Channel
+		log.Println(data)
+		sub1.Unsubscribe()
+	}()
+
+	Kvo.Publish("aa","this is aa")
+
+	Kvo.Unsubscribe("aa")
+
+	time.Sleep(time.Second)
+}
