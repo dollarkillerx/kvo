@@ -7,7 +7,7 @@ go get github.com/dollarkillerx/kvo
 ```
 
 ### 🌰栗子 Example
-``` 
+```go
 	sub1, err := Kvo.Subscription("aa")  // 订阅消息
 	if err != nil {
 		log.Fatalln(err)
@@ -28,7 +28,7 @@ go get github.com/dollarkillerx/kvo
 
 
 
-``` 
+```go
 package kvo
 
 import (
