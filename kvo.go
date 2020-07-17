@@ -2,7 +2,9 @@ package kvo
 
 import (
 	"errors"
+	"log"
 	"sync"
+	"time"
 )
 
 type KvoInterface interface {
@@ -37,7 +39,7 @@ func init() {
 func (k *kvo) Subscription(subjectName string) (*KvoChannel, error) {
 	k.Lock()
 	defer k.Unlock()
-	c := make(chan interface{}, 100)
+	c := make(chan interface{}, 1000)
 	kvoChan := &KvoChannel{
 		Channel:     c,
 		id:          0,
@@ -61,10 +63,7 @@ func (k *kvo) Subscription(subjectName string) (*KvoChannel, error) {
 func (k *kvo) Unsubscribe(subjectName string) error {
 	k.Lock()
 	defer k.Unlock()
-	_, bool := k.kvoMap[subjectName]
-	if !bool {
-		return nil
-	}
+
 	delete(k.kvoMap, subjectName)
 	return nil
 }
@@ -72,12 +71,28 @@ func (k *kvo) Unsubscribe(subjectName string) error {
 // 发布
 // params: 主题名称,message
 // returns: error
-func (k *kvo) Publish(subjectName string, msg interface{}) error {
+func (k *kvo) Publish(subjectName string, msg interface{}) {
+	for i:=0;;i++{
+		err := k.publish(subjectName, msg)
+		if err == nil {
+			break
+		}
+
+		if i > 100 {
+			log.Println(err)
+		}
+		time.Sleep(time.Second * 3)
+		continue
+	}
+}
+
+func (k *kvo) publish(subjectName string, msg interface{}) error {
 	k.Lock()
 	defer k.Unlock()
+
 	chans, bool := k.kvoMap[subjectName]
 	if !bool {
-		return errors.New("does not exist")
+		return errors.New("not subject")
 	}
 	for _, v := range chans {
 		v.Channel <- msg
@@ -90,6 +105,7 @@ func (k *kvo) Publish(subjectName string, msg interface{}) error {
 func (k *KvoChannel) Unsubscribe() error {
 	k.kvo.Lock()
 	defer k.kvo.Unlock()
+
 	chans, bool := k.kvo.kvoMap[k.subjectName]
 	if !bool {
 		return errors.New("not exist")
@@ -116,6 +132,6 @@ func Unsubscribe(subjectName string) error {
 	return kkvo.Unsubscribe(subjectName)
 }
 
-func Publish(subjectName string, msg interface{}) error {
-	return kkvo.Publish(subjectName,msg)
+func Publish(subjectName string, msg interface{}) {
+	kkvo.Publish(subjectName,msg)
 }
