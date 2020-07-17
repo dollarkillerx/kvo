@@ -23,10 +23,10 @@ type KvoChannel struct {
 	subjectName string
 }
 
-var Kvo *kvo
+var kkvo *kvo
 
 func init() {
-	Kvo = &kvo{
+	kkvo = &kvo{
 		kvoMap: map[string][]*KvoChannel{},
 	}
 }
@@ -106,4 +106,16 @@ func (k *KvoChannel) Unsubscribe() error {
 
 func (k *KvoChannel) Chan() chan interface{} {
 	return k.Channel
+}
+
+func Subscription(subjectName string) (*KvoChannel, error) {
+	return kkvo.Subscription(subjectName)
+}
+
+func Unsubscribe(subjectName string) error {
+	return kkvo.Unsubscribe(subjectName)
+}
+
+func Publish(subjectName string, msg interface{}) error {
+	return kkvo.Publish(subjectName,msg)
 }
