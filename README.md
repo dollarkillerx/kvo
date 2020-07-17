@@ -3,8 +3,8 @@
 
 ### install
 ```shell
-```
 go get github.com/dollarkillerx/kvo
+```
 
 ### 🌰栗子 Example
 ``` 
