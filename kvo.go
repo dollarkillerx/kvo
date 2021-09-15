@@ -31,7 +31,7 @@ type Channel struct {
 func (k *Kvo) Subscription(subjectName string) (*Channel, error) {
 	k.Lock()
 	defer k.Unlock()
-	c := make(chan interface{}, 10)
+	c := make(chan interface{}, 1000)
 	kvoChan := &Channel{
 		Channel:     c,
 		id:          0,
