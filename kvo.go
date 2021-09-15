@@ -2,7 +2,6 @@ package kvo
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -84,7 +83,7 @@ func (k *Kvo) publish(subjectName string, msg interface{}) error {
 	k.Unlock()
 
 	for _, v := range channels {
-		fmt.Println(len(v.Channel))
+		//fmt.Println(len(v.Channel))
 		v.Channel <- msg
 	}
 	return nil
