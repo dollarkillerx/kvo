@@ -2,65 +2,52 @@ package kvo
 
 import (
 	"errors"
-	"log"
+	"fmt"
 	"sync"
 	"time"
 )
 
-type KvoInterface interface {
-	Subscription(subjectName string) (*KvoChannel, error)
-	Publish(subjectName string, msg interface{}) error
-	Unsubscribe(subjectName string) error
-}
-
-type kvo struct {
+type Kvo struct {
 	sync.Mutex
-	kvoMap map[string][]*KvoChannel
+	kvoMap map[string][]*Channel
 }
 
-type KvoChannel struct {
-	kvo         *kvo
-	Channel     chan interface{}
-	id          int
-	subjectName string
-}
-
-var kkvo *kvo
-
-func init() {
-	kkvo = &kvo{
-		kvoMap: map[string][]*KvoChannel{},
+func New() *Kvo {
+	return &Kvo{
+		kvoMap: map[string][]*Channel{},
 	}
 }
 
-// 订阅
+type Channel struct {
+	kvo         *Kvo
+	Channel     chan interface{}
+	id          int    // 当前ID
+	subjectName string // 订阅主题
+}
+
+// Subscription 订阅
 // params: 主题名称
 // returns: KvoChannel,error
-func (k *kvo) Subscription(subjectName string) (*KvoChannel, error) {
+func (k *Kvo) Subscription(subjectName string) (*Channel, error) {
 	k.Lock()
 	defer k.Unlock()
-	c := make(chan interface{}, 1000)
-	kvoChan := &KvoChannel{
+	c := make(chan interface{}, 10)
+	kvoChan := &Channel{
 		Channel:     c,
 		id:          0,
 		kvo:         k,
 		subjectName: subjectName,
 	}
-	channels, bool := k.kvoMap[subjectName]
-	if !bool {
-		k.kvoMap[subjectName] = make([]*KvoChannel, 0)
-		k.kvoMap[subjectName] = append(k.kvoMap[subjectName], kvoChan)
-	} else {
-		kvoChan.id = len(channels)
-		k.kvoMap[subjectName] = append(k.kvoMap[subjectName], kvoChan)
-	}
+	channels := k.kvoMap[subjectName]
+	kvoChan.id = len(channels)
+	k.kvoMap[subjectName] = append(k.kvoMap[subjectName], kvoChan)
 	return kvoChan, nil
 }
 
-// 退订
+// Unsubscribe 退订
 // params: 主题名称
 // returns: error
-func (k *kvo) Unsubscribe(subjectName string) error {
+func (k *Kvo) Unsubscribe(subjectName string) error {
 	k.Lock()
 	defer k.Unlock()
 
@@ -68,70 +55,61 @@ func (k *kvo) Unsubscribe(subjectName string) error {
 	return nil
 }
 
-// 发布
+// Publish 发布
 // params: 主题名称,message
 // returns: error
-func (k *kvo) Publish(subjectName string, msg interface{}) {
-	for i:=0;;i++{
+func (k *Kvo) Publish(subjectName string, msg interface{}) error {
+	for i := 0; ; i++ {
+		// 当主题不存在是尝试插入
 		err := k.publish(subjectName, msg)
 		if err == nil {
-			break
+			return nil
 		}
 
 		if i > 100 {
-			log.Println(err)
+			return err
 		}
 		time.Sleep(time.Second * 3)
-		continue
 	}
 }
 
-func (k *kvo) publish(subjectName string, msg interface{}) error {
+func (k *Kvo) publish(subjectName string, msg interface{}) error {
+	// fix: fatal error: all goroutines are asleep - deadlock!
 	k.Lock()
-	defer k.Unlock()
-
-	chans, bool := k.kvoMap[subjectName]
-	if !bool {
+	channels, ex := k.kvoMap[subjectName]
+	if !ex {
+		k.Unlock()
 		return errors.New("not subject")
 	}
-	for _, v := range chans {
+	k.Unlock()
+
+	for _, v := range channels {
+		fmt.Println(len(v.Channel))
 		v.Channel <- msg
 	}
 	return nil
 }
 
-// 退订
+// Unsubscribe 退订
 // returns: error
-func (k *KvoChannel) Unsubscribe() error {
+func (k *Channel) Unsubscribe() error {
 	k.kvo.Lock()
 	defer k.kvo.Unlock()
 
-	chans, bool := k.kvo.kvoMap[k.subjectName]
-	if !bool {
+	channels, ex := k.kvo.kvoMap[k.subjectName]
+	if !ex {
 		return errors.New("not exist")
 	}
 
-	if len(chans)-1 == k.id {
-		chans = append(chans[:k.id])
+	if len(channels)-1 == k.id {
+		channels = append(channels[:k.id])
 	} else {
-		chans = append(chans[:k.id], chans[k.id+1:]...)
+		channels = append(channels[:k.id], channels[k.id+1:]...)
 	}
-	k.kvo.kvoMap[k.subjectName] = chans
+	k.kvo.kvoMap[k.subjectName] = channels
 	return nil
 }
 
-func (k *KvoChannel) Chan() chan interface{} {
+func (k *Channel) Chan() chan interface{} {
 	return k.Channel
-}
-
-func Subscription(subjectName string) (*KvoChannel, error) {
-	return kkvo.Subscription(subjectName)
-}
-
-func Unsubscribe(subjectName string) error {
-	return kkvo.Unsubscribe(subjectName)
-}
-
-func Publish(subjectName string, msg interface{}) {
-	kkvo.Publish(subjectName,msg)
 }
