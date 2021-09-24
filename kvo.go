@@ -46,12 +46,20 @@ func (k *Kvo) Subscription(subjectName string) (*Channel, error) {
 // Unsubscribe 退订
 // params: 主题名称
 // returns: error
-func (k *Kvo) Unsubscribe(subjectName string) error {
+func (k *Kvo) Unsubscribe(subjectName string) {
 	k.Lock()
 	defer k.Unlock()
 
+	channels, ex := k.kvoMap[subjectName]
+	if !ex {
+		return
+	}
+
+	for _, v := range channels {
+		close(v.Channel)
+	}
+
 	delete(k.kvoMap, subjectName)
-	return nil
 }
 
 // Publish 发布
@@ -99,6 +107,9 @@ func (k *Channel) Unsubscribe() error {
 	if !ex {
 		return errors.New("not exist")
 	}
+
+	cha := channels[k.id]
+	close(cha.Channel)
 
 	if len(channels)-1 == k.id {
 		channels = append(channels[:k.id])
